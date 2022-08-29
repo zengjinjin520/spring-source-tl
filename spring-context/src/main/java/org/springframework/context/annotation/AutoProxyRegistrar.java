@@ -57,19 +57,32 @@ public class AutoProxyRegistrar implements ImportBeanDefinitionRegistrar {
 	@Override
 	public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata, BeanDefinitionRegistry registry) {
 		boolean candidateFound = false;
+		//这里需要特别注意的是：这里拿到所有的注解类型···而不是只拿@EnableAspectJAutoProxy这个类型的
+		//原因: 因为mode,proxyTargetClass等属性会直接影响到代理的方式,而拥有这些属性的注解至少有:
+		//@EnableTransactionManagement、@EnableAspectJAutoProxy、@EnableCaching~~~等等
+		//甚至还有启用AOP注解：@EnableAspectJAutoProxy它能设置`proxyTargetClass`这个属性的值，因此会差生关联影响~~
 		Set<String> annTypes = importingClassMetadata.getAnnotationTypes();
 		for (String annType : annTypes) {
 			AnnotationAttributes candidate = AnnotationConfigUtils.attributesFor(importingClassMetadata, annType);
 			if (candidate == null) {
 				continue;
 			}
+			// 拿到注解的这两个属性
+			// 说明：如果你是比如@Configuration或者别的注解的话，他们就是null了
 			Object mode = candidate.get("mode");
 			Object proxyTargetClass = candidate.get("proxyTargetClass");
+			// 如果存在mode且存在proxyTargetClass属性
+			// 并且两个属性的class类型也是对的，才会进来此处（因此其余注解相当于都挡在外面了~）
 			if (mode != null && proxyTargetClass != null && AdviceMode.class == mode.getClass() &&
 					Boolean.class == proxyTargetClass.getClass()) {
+				// 标志：找到了候选的注解
 				candidateFound = true;
 				if (mode == AdviceMode.PROXY) {
+					// 这一步是非常重要的~~~又到了我们非常熟悉的AopConfigUtils工具类，且是熟悉的registerAutoProxyCreatorNecessary方法
+					// 它主要是注册了一个`internalAutoProxyCreator`，但是若出现多次的话，这里不是覆盖的形式，而是以第一次的为主
+					// 当然它内部是有做等级的提升之类的，这个之前也有分析过
 					AopConfigUtils.registerAutoProxyCreatorIfNecessary(registry);
+					// 看要不要强制使用CGLIB的方式（由此可以发现 这个属性若出现多次，是会是覆盖的形式）
 					if ((Boolean) proxyTargetClass) {
 						AopConfigUtils.forceAutoProxyCreatorToUseClassProxying(registry);
 						return;
@@ -77,8 +90,11 @@ public class AutoProxyRegistrar implements ImportBeanDefinitionRegistrar {
 				}
 			}
 		}
+		// 如果一个都没有找到（我在想，肿么可能呢？）
+		// 其实有可能：那就是自己注入这个类，而不是使用注解的方式去注入（但并不建议这么去做）
 		if (!candidateFound && logger.isWarnEnabled()) {
 			String name = getClass().getSimpleName();
+			// 输出警告日志
 			logger.warn(String.format("%s was imported but no annotations were found " +
 					"having both 'mode' and 'proxyTargetClass' attributes of type " +
 					"AdviceMode and boolean respectively. This means that auto proxy " +

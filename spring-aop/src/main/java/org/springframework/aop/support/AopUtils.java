@@ -219,11 +219,14 @@ public abstract class AopUtils {
 	 */
 	public static boolean canApply(Pointcut pc, Class<?> targetClass, boolean hasIntroductions) {
 		Assert.notNull(pc, "Pointcut must not be null");
+		// 进行类级别过滤 这里会返回
 		if (!pc.getClassFilter().matches(targetClass)) {
 			return false;
 		}
 		/**
 		 * 通过切点获取到一个方法匹配器对象
+		 * 进行方法级别过滤
+		 * 如果是pc.getMethodMatcher()返回TrueMethodMatcher则匹配所有方法
 		 */
 		MethodMatcher methodMatcher = pc.getMethodMatcher();
 		if (methodMatcher == MethodMatcher.TRUE) {

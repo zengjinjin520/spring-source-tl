@@ -13,6 +13,7 @@ import java.math.BigDecimal;
  * Created by smlz on 2019/6/17.
  */
 @Component
+@Transactional(rollbackFor = Exception.class)
 public class PayServiceImpl implements PayService {
 
     @Autowired
@@ -21,7 +22,6 @@ public class PayServiceImpl implements PayService {
     @Autowired
     private ProductInfoDao productInfoDao;
 
-	@Transactional(rollbackFor = Exception.class)
     public void pay(String accountId, double money) {
         //查询余额
         double blance = accountInfoDao.qryBlanceByUserId(accountId);
@@ -31,9 +31,9 @@ public class PayServiceImpl implements PayService {
             throw new RuntimeException("余额不足");
         }
 
-		//this.updateProductStore(1);
+//		this.updateProductStore(1);
 
-        System.out.println(1/0);
+//        System.out.println(1/0);
 
         //更新余额
         int retVal = accountInfoDao.updateAccountBlance(accountId,money);

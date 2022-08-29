@@ -80,16 +80,16 @@ public abstract class TransactionSynchronizationManager {
 
 	private static final ThreadLocal<Set<TransactionSynchronization>> synchronizations =
 			new NamedThreadLocal<>("Transaction synchronizations");
-
+	// 事务的名称
 	private static final ThreadLocal<String> currentTransactionName =
 			new NamedThreadLocal<>("Current transaction name");
-
+	// 是否为只读事务
 	private static final ThreadLocal<Boolean> currentTransactionReadOnly =
 			new NamedThreadLocal<>("Current transaction read-only status");
-
+	// 当前事务的隔离级别
 	private static final ThreadLocal<Integer> currentTransactionIsolationLevel =
 			new NamedThreadLocal<>("Current transaction isolation level");
-
+	// 当前事务是否激活，怎么样算是激活：就是有事务就是已开启，当然到这一步一般就是有事务的，因为执行doBegin就开启了
 	private static final ThreadLocal<Boolean> actualTransactionActive =
 			new NamedThreadLocal<>("Actual transaction active");
 

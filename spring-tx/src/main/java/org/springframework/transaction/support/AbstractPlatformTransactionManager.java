@@ -354,7 +354,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 		}
 
 		/**
-		 * 判断是不是已经存在了事务对象
+		 * 判断是不是已经存在了事务对象 （事务嵌套）
 		 */
 		if (isExistingTransaction(transaction)) {
 			//处理存在的事务
@@ -395,6 +395,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 				logger.debug("Creating new transaction with name [" + definition.getName() + "]: " + definition);
 			}
 			try {
+				// 意思是可以同步
 				boolean newSynchronization = (getTransactionSynchronization() != SYNCHRONIZATION_NEVER);
 				//新创建一个事务状态
 				DefaultTransactionStatus status = newTransactionStatus(
@@ -478,7 +479,9 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 				throw beginEx;
 			}
 		}
-
+		/**
+		 * NESTED 存在外部事务：融合到外部事务中 应用层面和REQUIRED一样， 源码层面
+		 */
 		if (definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_NESTED) {
 			if (!isNestedTransactionAllowed()) {
 				throw new NestedTransactionNotSupportedException(
@@ -489,11 +492,13 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 				logger.debug("Creating nested transaction with name [" + definition.getName() + "]");
 			}
 			//嵌套事物的处理
+			// 是否支持保存点：非JTA事务走这个分支。AbstractPlatformTransactionManager默认是true，JtaTransactionManager复写了该方法false，DataSourceTransactionManager没有复写，还是true，
 			if (useSavepointForNestedTransaction()) {
 				//开启一个新的事物
 				DefaultTransactionStatus status =
 						prepareTransactionStatus(definition, transaction, false, false, debugEnabled, null);
 				//为事物设置一个回退点
+				// savepoint 可以在一组事务中，设置一个回滚点，点以上的不受影响，点以下的回滚。（外层影响内层，内层不会影响外层）
 				status.createAndHoldSavepoint();
 				return status;
 			}

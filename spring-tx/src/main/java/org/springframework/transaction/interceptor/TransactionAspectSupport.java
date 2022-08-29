@@ -278,13 +278,16 @@ public abstract class TransactionAspectSupport implements BeanFactoryAware, Init
 	protected Object invokeWithinTransaction(Method method, @Nullable Class<?> targetClass,
 			final InvocationCallback invocation) throws Throwable {
 
-		//获取我们的事务属源对象
+		//获取我们的事务属源对象 在配置中添加的。在创建代理进行匹配的时候还用了它还记得吗（将解析的事务属性赋值进去）
 		TransactionAttributeSource tas = getTransactionAttributeSource();
-		//通过事务属性源对象获取到我们的事务属性信息
+		// 通过事务属性源对象获取到我们的事务属性信息
+		// 创建代理的时候也调用了getTransactionAttribute还记得吗， 如果解析到了事务属性就可以创建代理
+		// 在这里是从解析后的缓存中获取
 		final TransactionAttribute txAttr = (tas != null ? tas.getTransactionAttribute(method, targetClass) : null);
-		//获取我们配置的事务管理器对象
+		//获取我们配置的事务管理器对象 在我们自己的配置类里面配置的
 		final PlatformTransactionManager tm = determineTransactionManager(txAttr);
 		//从tx属性对象中获取出标注了@Transactionl的方法描述符
+		// 之前往descriptor中设置的还记得吧
 		final String joinpointIdentification = methodIdentification(method, targetClass, txAttr);
 
 		//处理声明式事务

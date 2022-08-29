@@ -14,7 +14,7 @@ public class MainClass {
         AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(MainConfig.class);
 
         PayService payService = (PayService) context.getBean("payServiceImpl");
-        payService.pay("123456789",10);
+        payService.pay("123456",5);
 
     }
 }

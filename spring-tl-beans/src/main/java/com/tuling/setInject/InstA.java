@@ -1,8 +1,5 @@
 package com.tuling.setInject;
 
-
-import com.sun.org.apache.xpath.internal.SourceTree;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
@@ -23,7 +20,7 @@ public class InstA {
 		this.instB = instB;
 	}
 
-	public InstA(){
+	public InstA() {
 		System.out.println("InstA的构造方法.....");
 	}
 

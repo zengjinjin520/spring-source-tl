@@ -1041,7 +1041,7 @@ public class AnnotatedElementUtils {
 
 		if (visited.add(element)) {
 			try {
-				// Locally declared annotations (ignoring @Inherited)
+				// Locally declared annotations (ignoring @Inherited) 先共元素上（类或方法）
 				Annotation[] annotations = element.getDeclaredAnnotations();
 				if (annotations.length > 0) {
 					List<T> aggregatedResults = (processor.aggregates() ? new ArrayList<>() : null);
@@ -1100,7 +1100,7 @@ public class AnnotatedElementUtils {
 						processor.getAggregatedResults().addAll(0, aggregatedResults);
 					}
 				}
-
+				// 元素是方法方式的解析
 				if (element instanceof Method) {
 					Method method = (Method) element;
 					T result;
@@ -1116,6 +1116,7 @@ public class AnnotatedElementUtils {
 					}
 
 					// Search on methods in interfaces declared locally
+					//接口的方法
 					Class<?>[] ifcs = method.getDeclaringClass().getInterfaces();
 					if (ifcs.length > 0) {
 						result = searchOnInterfaces(method, annotationType, annotationName,
@@ -1126,6 +1127,7 @@ public class AnnotatedElementUtils {
 					}
 
 					// Search on methods in class hierarchy and interface hierarchy
+					// 父类的方法
 					Class<?> clazz = method.getDeclaringClass();
 					while (true) {
 						clazz = clazz.getSuperclass();
@@ -1153,10 +1155,11 @@ public class AnnotatedElementUtils {
 						}
 					}
 				}
+				// 元素是类方式的解析
 				else if (element instanceof Class) {
 					Class<?> clazz = (Class<?>) element;
 					if (!Annotation.class.isAssignableFrom(clazz)) {
-						// Search on interfaces
+						// Search on interfaces 去接口上找
 						for (Class<?> ifc : clazz.getInterfaces()) {
 							T result = searchWithFindSemantics(ifc, annotationType, annotationName,
 									containerType, processor, visited, metaDepth);
@@ -1164,7 +1167,7 @@ public class AnnotatedElementUtils {
 								return result;
 							}
 						}
-						// Search on superclass
+						// Search on superclass 去父类上找
 						Class<?> superclass = clazz.getSuperclass();
 						if (superclass != null && superclass != Object.class) {
 							T result = searchWithFindSemantics(superclass, annotationType, annotationName,

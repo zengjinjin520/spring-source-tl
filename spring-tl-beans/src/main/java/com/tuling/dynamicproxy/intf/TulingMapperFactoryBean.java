@@ -12,6 +12,7 @@ import java.util.Arrays;
 /**
  * Created by smlz on 2020/3/31.
  */
+@SuppressWarnings({"rawtypes", "unchecked"})
 public class TulingMapperFactoryBean implements FactoryBean {
 
 	private Class targetClass;

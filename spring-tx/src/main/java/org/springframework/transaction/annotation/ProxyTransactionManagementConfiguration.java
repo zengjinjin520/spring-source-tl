@@ -39,6 +39,7 @@ public class ProxyTransactionManagementConfiguration extends AbstractTransaction
 
 	/**
 	 * 导入了关于事务的切面信息
+	 * 这个Advisor可是事务的核心内容。。。。。也是本文中点分析的对象
 	 * @return
 	 */
 	@Bean(name = TransactionManagementConfigUtils.TRANSACTION_ADVISOR_BEAN_NAME)
@@ -47,6 +48,7 @@ public class ProxyTransactionManagementConfiguration extends AbstractTransaction
 		BeanFactoryTransactionAttributeSourceAdvisor advisor = new BeanFactoryTransactionAttributeSourceAdvisor();
 		advisor.setTransactionAttributeSource(transactionAttributeSource());
 		advisor.setAdvice(transactionInterceptor());
+		// 顺序由@EnableTransactionManagement注解的Order属性来指定 默认值：Ordered.LOWEST_PRECEDENCE
 		if (this.enableTx != null) {
 			advisor.setOrder(this.enableTx.<Integer>getNumber("order"));
 		}
@@ -55,6 +57,8 @@ public class ProxyTransactionManagementConfiguration extends AbstractTransaction
 
 	/**
 	 * 事务属性源对象:用于获取事务属性对象
+	 * TransactionAttributeSource 这种类特别像`TargetSource`这种类的设计模式
+	 * 这里直接使用的是AnnotationTransactionAttributeSource 基于注解的事务属性源~~~
 	 * @return
 	 */
 	@Bean
@@ -65,13 +69,19 @@ public class ProxyTransactionManagementConfiguration extends AbstractTransaction
 
 	/**
 	 * 用户拦截事务方法执行的
+	 * 事务拦截器，它是个`MethodInterceptor`，它也是Spring处理事务最为核心的部分
+	 * 请注意：你可以自己定义一个TransactionInterceptor（同名的），来覆盖Bean（注意是覆盖）
+	 * 另外请注意：你自己定义的BeanName必须同名，也就是必须名为：transactionInterceptor 否则两个都会注册进容器里面去~~~~
 	 * @return
 	 */
 	@Bean
 	@Role(BeanDefinition.ROLE_INFRASTRUCTURE)
 	public TransactionInterceptor transactionInterceptor() {
 		TransactionInterceptor interceptor = new TransactionInterceptor();
+		// 事务的属性
 		interceptor.setTransactionAttributeSource(transactionAttributeSource());
+		// 事务管理器（也就是注解最终需要使用的事务管理器，父类已经处理好了）
+		// 此处注意：我们是可以不用特殊指定的，最终它自己会去容器匹配一个合适的~~~
 		if (this.txManager != null) {
 			interceptor.setTransactionManager(this.txManager);
 		}
