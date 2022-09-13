@@ -385,6 +385,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 		}
 
 		// Decorate event as an ApplicationEvent if necessary
+		// 1.如有必要，将事件装饰为ApplicationEvent
 		ApplicationEvent applicationEvent;
 		if (event instanceof ApplicationEvent) {
 			applicationEvent = (ApplicationEvent) event;
@@ -401,10 +402,12 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 			this.earlyApplicationEvents.add(applicationEvent);
 		}
 		else {
+			// 2.使用事件广播器广播事件到相应的监听器
 			getApplicationEventMulticaster().multicastEvent(applicationEvent, eventType);
 		}
 
 		// Publish event via parent context as well...
+		// 3.同样的，通过parent发布事件......
 		if (this.parent != null) {
 			if (this.parent instanceof AbstractApplicationContext) {
 				((AbstractApplicationContext) this.parent).publishEvent(event, eventType);
@@ -517,22 +520,30 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	public void refresh() throws BeansException, IllegalStateException {
 		synchronized (this.startupShutdownMonitor) {
 			//1:准备刷新上下文环境
+			// 刷新预处理，和主流程关系不大，就是保存了容器的启动时间，启动标志等
 			prepareRefresh();
 
 			//2:获取告诉子类初始化Bean工厂
+			// 和主流程关系也不大，最终获得了DefaultListableBeanFactory
 			ConfigurableListableBeanFactory beanFactory = obtainFreshBeanFactory();
 
 			//3:对bean工厂进行填充属性
+			// 还是一些准备工作，添加了两个后置处理器：ApplicationContextAwareProcessor，ApplicationListenerDetector
+			// 还设置了 忽略自动装配 和 允许自动装配 的接口，如果不存在某个bean的时候，spring就自动注册singleton bean
+			// 还设置了备案表达式解析器 等
 			prepareBeanFactory(beanFactory);
 
 			try {
 				// 第四:留个子类去实现该接口
+				// 这是一个空方法
 				postProcessBeanFactory(beanFactory);
 
 				// 调用我们的bean工厂的后置处理器.
+				// 执行自定义的BeanFactoryProcessors和内置的BeanFactoryProcessors
 				invokeBeanFactoryPostProcessors(beanFactory);
 
 				// 调用我们bean的后置处理器
+				// 注册BeanPostProcessor
 				registerBeanPostProcessors(beanFactory);
 
 				// 初始化国际化资源处理器.
@@ -542,6 +553,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 				initApplicationEventMulticaster();
 
 				// 这个方法同样也是留个子类实现的springboot也是从这个方法进行启动tomat的.
+				// 空方法
 				onRefresh();
 
 				//把我们的事件监听器注册到多播器上
@@ -690,7 +702,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 		beanFactory.registerResolvableDependency(ApplicationEventPublisher.class, this);
 		beanFactory.registerResolvableDependency(ApplicationContext.class, this);
 
-		//注册了一个事件监听器探测器后置处理器接口
+		//注册了一个事件监听器探测器后置处理器接口 此后置处理器实现了BeanPostProcessor
 		beanFactory.addBeanPostProcessor(new ApplicationListenerDetector(this));
 
 		// 处理aspectj的
@@ -701,6 +713,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 		}
 
 		//注册了bean工厂的内部的bean
+		// 如果没有注册过bean名称为xxx，spring就自己创建一个名称为xxx的singleton bean
 		if (!beanFactory.containsLocalBean(ENVIRONMENT_BEAN_NAME)) {
 			//环境
 			beanFactory.registerSingleton(ENVIRONMENT_BEAN_NAME, getEnvironment());
@@ -729,9 +742,13 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	 * Instantiate and invoke all registered BeanFactoryPostProcessor beans,
 	 * respecting explicit order if given.
 	 * <p>Must be called before singleton instantiation.
+	 * 重点代码终于来了，可以说，这句代码是目前为止最重要，也是内容最多的代码了，我们有必要好好分析下：
 	 */
 	protected void invokeBeanFactoryPostProcessors(ConfigurableListableBeanFactory beanFactory) {
 		//传入bean工厂和获取applicationContext中的bean工厂后置处理器(但是由于没有任何实例化过程,所以传递进来的为空)
+		// getBeanFactoryPostProcessors真是坑，第一次看到这里的时候，愣住了，总觉得获得的永远是空的集合，掉入坑里，久久无法自拔
+		// 后来才知道spring允许我们手动添加BeanFactoryPostProcessor
+		// 即：annotationConfigApplicationContext.addBeanFactoryPostProcessor(xxx)
 		PostProcessorRegistrationDelegate.invokeBeanFactoryPostProcessors(beanFactory, getBeanFactoryPostProcessors());
 
 		// Detect a LoadTimeWeaver and prepare for weaving, if found in the meantime
@@ -958,12 +975,14 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 		clearResourceCaches();
 
 		// Initialize lifecycle processor for this context.
+		// 1.为此上下文初始化生命周期处理器
 		initLifecycleProcessor();
 
 		// Propagate refresh to lifecycle processor first.
+		// 2.首先将刷新完毕事件传播到生命周期处理器（触发isAutoStartup方法返回true的SmartLifecycle的start方法）
 		getLifecycleProcessor().onRefresh();
-
 		// Publish the final event.
+		// 3.推送上下文刷新完毕事件到相应的监听器
 		publishEvent(new ContextRefreshedEvent(this));
 
 		// Participate in LiveBeansView MBean, if active.

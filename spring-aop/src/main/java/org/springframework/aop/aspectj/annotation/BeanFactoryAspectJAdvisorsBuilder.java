@@ -127,9 +127,13 @@ public class BeanFactoryAspectJAdvisorsBuilder {
 								MetadataAwareAspectInstanceFactory factory =
 										new BeanFactoryAspectInstanceFactory(this.beanFactory, beanName);
 								//真正的去获取我们的实例工厂
+								// 1.找到切面类的所有但是不包括@Pointcut注解的方法
+								// 2.筛选出包含@Around，@Before，@After，@AfterReturning，@AfterThrowing注解的方法
+								// 3.封装为List<Advisor>返回
 								List<Advisor> classAdvisors = this.advisorFactory.getAdvisors(factory);
 								//加入到缓存中
 								if (this.beanFactory.isSingleton(beanName)) {
+									// 将上面找出来的Advisor按照key为beanName，value为List<Advisor>的形式存入advisorsCache
 									this.advisorsCache.put(beanName, classAdvisors);
 								}
 								else {

@@ -165,11 +165,12 @@ class ConfigurationClassParser {
 		 * 用于来保存延时的ImportSelectors，最最最著名的代表就是我们的SpringBoot自动装配的的类 AutoConfigurationImportSelector
 		 */
 		this.deferredImportSelectors = new LinkedList<>();
-
+		// 循环传进来的配置类
 		for (BeanDefinitionHolder holder : configCandidates) {
+			// 获得BeanDefinition
 			BeanDefinition bd = holder.getBeanDefinition();
 			try {
-				//真正的解析我们的bean定义
+				//真正的解析我们的bean定义 如果获得的BeanDefinition是AnnotatedBeanDefinition的实例
 				if (bd instanceof AnnotatedBeanDefinition) {
 					parse(((AnnotatedBeanDefinition) bd).getMetadata(), holder.getBeanName());
 				}
@@ -231,6 +232,7 @@ class ConfigurationClassParser {
 
 
 	protected void processConfigurationClass(ConfigurationClass configClass) throws IOException {
+		// 判断是否需要跳过
 		if (this.conditionEvaluator.shouldSkip(configClass.getMetadata(), ConfigurationPhase.PARSE_CONFIGURATION)) {
 			return;
 		}
@@ -279,11 +281,13 @@ class ConfigurationClassParser {
 	@Nullable
 	protected final SourceClass doProcessConfigurationClass(ConfigurationClass configClass, SourceClass sourceClass)
 			throws IOException {
-
+		// 递归处理内部类，一般不会写内部类
 		// Recursively process any member (nested) classes first
 		processMemberClasses(configClass, sourceClass);
 
 		//处理我们的@propertySource注解的
+
+		// 处理@PropertySource注解，@PropertySource注解用来加载properties文件
 		for (AnnotationAttributes propertySource : AnnotationConfigUtils.attributesForRepeatable(
 				sourceClass.getMetadata(), PropertySources.class,
 				org.springframework.context.annotation.PropertySource.class)) {
@@ -299,8 +303,10 @@ class ConfigurationClassParser {
 		//解析我们的 @ComponentScan 注解
 
 		//从我们的配置类上解析处ComponentScans的对象集合属性
+		// 获取ComponentScan注解具体的内容，ComponentScan注解除了最常用的basePackage之外，还有includeFilters，ExcludeFilters等
 		Set<AnnotationAttributes> componentScans = AnnotationConfigUtils.attributesForRepeatable(
 				sourceClass.getMetadata(), ComponentScans.class, ComponentScan.class);
+		// 如果没有打上ComponentScan，或者被@Condition条件跳过，就不再进入这个if
 		if (!componentScans.isEmpty() &&
 				!this.conditionEvaluator.shouldSkip(sourceClass.getMetadata(), ConfigurationPhase.REGISTER_BEAN)) {
 			//循环解析 我们解析出来的AnnotationAttributes
@@ -324,6 +330,9 @@ class ConfigurationClassParser {
 		}
 
 		// 处理 @Import annotations
+		// @Import注解是spring中很重要的一个注解，Springboot大量应用这个注解
+		// @Import三种类，一种是Import普通类，一种是Import ImportSelector，还有一种是Import ImportBeanDefinitionRegistrar
+		// getImports(sourceClass)是获得import的内容，返回的是一个set
 		processImports(configClass, sourceClass, getImports(sourceClass), true);
 
 		// 处理 @ImportResource annotations
@@ -338,7 +347,7 @@ class ConfigurationClassParser {
 			}
 		}
 
-		// 处理 @Bean methods 获取到我们配置类中所有标注了@Bean的方法
+		// 处理 @Bean methods 获取到我们配置类中所有标注了@Bean的方法 可已看到获得了带有@Bean的方法后，不是马上转换称BeanDefinition，而是先用一个set接收
 		Set<MethodMetadata> beanMethods = retrieveBeanMethodMetadata(sourceClass);
 
 		for (MethodMetadata methodMetadata : beanMethods) {
@@ -615,6 +624,25 @@ class ConfigurationClassParser {
 		return group;
 	}
 
+	/**
+	 * 这个方法内部相当复杂，importCandidates是Import的内容，调用这个方法的时候，已经说过了可能由三种情况
+	 * 这里再说下，1.Import普通类，2.Import ImportSelector， 3.Import ImportBeanDefinitionRegistrar
+	 * 循环importCandidates，判断属于那种情况
+	 * 如果是普通类，会进到else，调用processConfigurationClass方法
+	 * 这个方法是不是很熟悉，没错，processImports这个方法就是再processConfigurationClass方法中被调用的
+	 * processImports又主动调用processConfigurationClass方法，是一个递归调用，因为Import的普通类，也有可能被加了Import注解，@ComponentS注解，或者其他注解，所以普通类需要再次被解析
+	 * 如果Import ImportSelector就跑到第一个if中去，首先执行Aware接口方法，所以我们在实现ImportSelector的同时，还可以实现Aware接口
+	 * 然后判断是不是DeferredImportSelector，DeferredImportSelector扩展了ImportSelector
+	 * 如果不是的话，调用selectImports方法，获得全限定类型数组，在转换成类的数据，然后再调用processImports，又特么的是一个递归调用...
+	 * 可能又有三种情况，一种情况是selectImports的类是一个普通类，第二种个情况是selectImports的类是一个ImportBeanDefinitionRegistrar类，第三种情况还是一个ImportSelector类
+	 * 所以又需要递归调用
+	 * 如果Import ImportBeanDefinitionRegistrar就跑到了第二个if，还是会执行Aware接口防范，这里终于没有递归了，会把主句放到ConfigurationClass
+	 * 中的Map<ImportBeanDefinitionRegistrar,AnnotationMetadata> importBeanDefinitionRegistrars中去
+	 * @param configClass
+	 * @param currentSourceClass
+	 * @param importCandidates
+	 * @param checkForCircularImports
+	 */
 	private void processImports(ConfigurationClass configClass, SourceClass currentSourceClass,
 			Collection<SourceClass> importCandidates, boolean checkForCircularImports) {
 

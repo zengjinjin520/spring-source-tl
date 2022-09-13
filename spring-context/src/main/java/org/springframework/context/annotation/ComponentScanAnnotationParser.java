@@ -74,10 +74,14 @@ class ComponentScanAnnotationParser {
 
 
 	public Set<BeanDefinitionHolder> parse(AnnotationAttributes componentScan, final String declaringClass) {
+		// 扫描器，还记不记得new AnnotationConfigApplicationContext的时候
+		// 会调用AnnotationConfigApplicationContext的构造方法
+		// 构造方法里面有一句 this.scanner = new ClassPathBeanDefinitionScanner(this)
+		// 当时说这个对象不重要，这里就证明了。常规用法中，实际上执行扫描的只会是这里的scanner对象
 		ClassPathBeanDefinitionScanner scanner = new ClassPathBeanDefinitionScanner(this.registry,
 				componentScan.getBoolean("useDefaultFilters"), this.environment, this.resourceLoader);
 
-		//为我们的扫描器设置beanName的生成器对象
+		//为我们的扫描器设置beanName的生成器对象 判断是否重写了默认的命名规则
 		Class<? extends BeanNameGenerator> generatorClass = componentScan.getClass("nameGenerator");
 		boolean useInheritedGenerator = (BeanNameGenerator.class == generatorClass);
 		scanner.setBeanNameGenerator(useInheritedGenerator ? this.beanNameGenerator :
@@ -96,6 +100,10 @@ class ComponentScanAnnotationParser {
 		}
 
 		scanner.setResourcePattern(componentScan.getString("resourcePattern"));
+
+		// addIncludeFilter addExcludeFilter，最终是往List<TypeFilter>里面填充数据
+		// TypeFilter是一个函数式接口，函数时接口在java8的时候大放异彩，只定义了一个虚方法的接口称为函数式接口
+		// 当调用scanner.addIncludeFilter scanner.addExcludeFilter 仅仅把定义的规则塞进去，并没有真正的去执行匹配过
 
 		//设置CompentScan对象的includeFilters 包含的属性
 		for (AnnotationAttributes filter : componentScan.getAnnotationArray("includeFilters")) {
@@ -126,13 +134,17 @@ class ComponentScanAnnotationParser {
 					ConfigurableApplicationContext.CONFIG_LOCATION_DELIMITERS);
 			Collections.addAll(basePackages, tokenized);
 		}
+		// 从下面的代码可以看出ComponentScans指定扫描目标，除了最常用的basePackages，还有两种方式
+		// 1.指定basePackageClasses，就是指定多个类，只要是与这几个类同级的，或者在这几个类下级的都可以被扫描到，这种方式其实式spring比较推荐的
+		// 因为指定basePackages没有IDE的检查，容易出错，但是指定一个类，就有idea的检查了，不容易出错，进场会用一个空的类作为basePackageClasses
+		// 2.直接不指定，默认会把与配置类同级，或者在配置类下级的作为扫描目标
 		for (Class<?> clazz : componentScan.getClassArray("basePackageClasses")) {
 			basePackages.add(ClassUtils.getPackageName(clazz));
 		}
 		if (basePackages.isEmpty()) {
 			basePackages.add(ClassUtils.getPackageName(declaringClass));
 		}
-
+		// 把规则填充到排除规则：List<TypeFilter>，这里就白 注册类自身当作排除规则，真正执行匹配的时候，会把自身给排除
 		scanner.addExcludeFilter(new AbstractTypeHierarchyTraversingFilter(false, false) {
 			@Override
 			protected boolean matchClassName(String className) {
@@ -140,6 +152,7 @@ class ComponentScanAnnotationParser {
 			}
 		});
 		//真正的进行扫描解析
+		// basePackages是一个LinkedHashSet<String>，这里及时basePackages转为字符串数组的形式
 		return scanner.doScan(StringUtils.toStringArray(basePackages));
 	}
 

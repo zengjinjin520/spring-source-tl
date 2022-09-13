@@ -371,6 +371,8 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 				//创建单例bean
 				if (mbd.isSingleton()) {
 					//把beanName 和一个singletonFactory 并且传入一个回调对象用于回调
+					// geiSingleton中的第二个参数是ObjectFactory<?>，是一个函数式接口，不会立刻执行，而是再getSingleton方法中，
+					// 调用ObjectFactory的getObject，才会执行createBean
 					sharedInstance = getSingleton(beanName, () -> {
 						try {
 							//进入创建bean的逻辑
